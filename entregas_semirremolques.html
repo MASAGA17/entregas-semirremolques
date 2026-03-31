@@ -43,7 +43,7 @@
   .section.active { display: block; }
 
   /* METRICS */
-  .metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
   .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; box-shadow: var(--shadow); }
   .metric-val { font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 4px; font-family: 'DM Mono', monospace; }
   .metric-lbl { font-size: 12px; color: var(--text2); font-weight: 400; }
@@ -79,6 +79,10 @@
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  thead th.sortable { cursor: pointer; user-select: none; }
+  thead th.sortable:hover { color: var(--text); }
+  thead th.sort-asc::after { content: " ↑"; }
+  thead th.sort-desc::after { content: " ↓"; }
   tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr.clickable:hover td { background: var(--bg); cursor: pointer; }
@@ -167,6 +171,34 @@
   .alert-warn { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
 
   /* SCROLL */
+  .cita-input {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 3px 5px;
+    border: 1px dashed var(--border-med);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    width: 120px;
+    outline: none;
+  }
+  .cita-input:focus { border-color: var(--text); border-style: solid; background: var(--surface); color: var(--text); }
+  .estatus-select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 4px 6px;
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    width: 100%;
+    max-width: 170px;
+    outline: none;
+  }
+  .estatus-select:hover { border-color: var(--text2); }
+  .estatus-select:focus { border-color: var(--text); }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 3px; }
@@ -208,7 +240,7 @@
     <!-- ===== DASHBOARD ===== -->
     <div id="sec-dash" class="section active">
       <div class="metrics-grid" id="metrics-row"></div>
-      <div class="grid-2" style="margin-bottom:16px">
+      <div class="grid-3" style="margin-bottom:16px">
         <div class="card">
           <div class="card-header"><span class="card-title">Sin fecha fábrica · pendientes</span></div>
           <div class="card-body" style="padding:0"><div id="dash-sinfecha"></div></div>
@@ -216,6 +248,13 @@
         <div class="card">
           <div class="card-header"><span class="card-title">Con cambios de fecha fábrica</span></div>
           <div class="card-body" style="padding:0"><div id="dash-cambios"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Órdenes con fecha de entrega agendada</span>
+            <span id="dash-cita-mini-count" style="font-size:12px;color:var(--text2)"></span>
+          </div>
+          <div class="card-body" style="padding:0"><div id="dash-citas-mini"></div></div>
         </div>
       </div>
       <div class="card">
@@ -226,6 +265,7 @@
         </table></div>
       </div>
     </div>
+
 
     <!-- ===== ÓRDENES ===== -->
     <div id="sec-ordenes" class="section">
@@ -248,9 +288,9 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Folio</th><th>Cliente</th><th>Empresa</th><th>Vendedor</th><th>Modelo</th><th>Esquema</th><th>Cant.</th>
-              <th>Fecha promesa inicial</th><th>Fecha fábrica actual</th>
-              <th>Cambios fábrica</th><th>Comentarios</th><th>SC</th><th>Días VTA</th><th></th>
+              <th class="sortable" id="th-folio" onclick="toggleFolioSort()">Folio</th><th>Cliente</th><th>Empresa</th><th>Vendedor</th><th>Modelo</th><th>Esquema</th><th>Cant.</th>
+              <th>Fecha promesa inicial</th><th>Fecha fábrica actual</th><th>Cita cliente</th>
+              <th>Cambios fábrica</th><th>Estatus</th><th>SC</th><th>Días VTA</th><th></th>
             </tr></thead>
             <tbody id="orders-tbody"></tbody>
           </table>
@@ -281,6 +321,7 @@
           <div id="new-msg" class="alert alert-success" style="display:none">Orden guardada correctamente.</div>
           <div class="form-row form-row-2">
             <div class="form-group"><label class="form-label">Folio *</label><input class="form-input" id="n-folio" placeholder="Ej. 4001"></div>
+            <div class="form-group"><label class="form-label">Fecha de venta *</label><input class="form-input" id="n-fechavta" type="date"></div>
             <div class="form-group"><label class="form-label">Cliente *</label><input class="form-input" id="n-cliente" placeholder="Nombre del cliente"></div>
           </div>
           <div class="form-row form-row-3">
@@ -333,6 +374,7 @@
           </div>
           <div class="form-row form-row-2">
             <div class="form-group"><label class="form-label">Fecha prometida fábrica</label><input class="form-input" id="n-fechafab" type="date"></div>
+            <div class="form-group"><label class="form-label">Cita cliente <span style="font-weight:400;color:var(--text3)">(opcional)</span></label><input class="form-input" id="n-fechacita" type="date"></div>
             <div class="form-group"><label class="form-label">Esquema</label>
               <select class="form-input" id="n-financiado">
                 <option value="">— Esquema —</option>
@@ -348,7 +390,7 @@
               </select>
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Comentarios</label>
+          <div class="form-group"><label class="form-label">Estatus</label>
             <select class="form-input" id="n-comentarios">
               <option value="">— Seleccionar —</option>
               <option>Flete</option>
@@ -384,6 +426,29 @@
 </div>
 
 <script>
+// ─── ESTATUS HELPERS ─────────────────────────────────────────
+const ESTATUS_OPTS = [
+  'Flete',
+  'Promesa de entrega',
+  'Pte contrato  (arrendamiento)',
+  'Pte contrato  (cliente)',
+  'Pte de Fabrica',
+  'Pte documentos  (clientes)',
+  'Pte documentos (arrendadora)',
+  'vendedor'
+];
+
+function estatusOptions(current) {
+  return ESTATUS_OPTS.map(o =>
+    `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`
+  ).join('');
+}
+
+function updateEstatus(oid, value) {
+  const o = orders.find(x => x.id === oid);
+  if (o) { o.comentarios = value; save(); }
+}
+
 // ─── DATA ────────────────────────────────────────────────────
 const SEED = [{"id":"2731_0","folio":"2731","cliente":"LTM SERVICIOS ESTRATEGICOS","empresa":"JJ","vendedor":"JESUS","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020","comentarios":"Flete","fechaVta":"2025-08-30","fechaFab":null,"histFab":[],"diasDesdeVta":212,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3509_1","folio":"3509","cliente":"ERASTO ADOLFO CHAVEZ PACHECO","empresa":"3C","vendedor":"NORMA","financiado":"ARRENDAMIENTO","equipo":"1","modelo":"PLANA 40 HQ  2 EJES","comentarios":"vendedor","fechaVta":"2025-09-30","fechaFab":null,"histFab":[],"diasDesdeVta":181,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3544_2","folio":"3544","cliente":"MISAEL MADRIGAL FERRER","empresa":"HT","vendedor":"GERARDO","financiado":"10 MESES","equipo":"2","modelo":"PORTA 4020","comentarios":"Promesa de entrega","fechaVta":"2025-10-24","fechaFab":null,"histFab":[],"diasDesdeVta":157,"sc":"JULY","mas60":"SI","estado":"pendiente"},{"id":"3558_3","folio":"3558","cliente":"LTM SERVICIOS ESTRATEGICOS","empresa":"3C","vendedor":"JESUS","financiado":"15 MESES","equipo":"2","modelo":"PORTA 4020 NEWAY","comentarios":"Promesa de entrega","fechaVta":"2025-10-27","fechaFab":null,"histFab":["2026-01-17"],"diasDesdeVta":154,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3725_4","folio":"3725","cliente":"MARCO ANTONIO MARIN FLORES","empresa":"3C","vendedor":"ANTONIO","financiado":"10 MESES","equipo":"1","modelo":"PORTA 4020 NEWAY","comentarios":"Pte documentos (arrendadora)","fechaVta":"2025-11-30","fechaFab":null,"histFab":[],"diasDesdeVta":120,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3780_5","folio":"3780","cliente":"TRANSPORTES Y MULTIFLETES MAMMOUTH","empresa":"HT","vendedor":"HEBER","financiado":"24 MESES","equipo":"2","modelo":"PORTA 4020","comentarios":"Promesa de entrega","fechaVta":"2025-12-04","fechaFab":"2026-03-25","histFab":["2026-03-09"],"diasDesdeVta":116,"sc":"BETTY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-03-09"},{"id":"3780_6","folio":"3780","cliente":"TRANSPORTES Y MULTIFLETES MAMMOUTH","empresa":"HT","vendedor":"HEBER","financiado":"24 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2025-12-04","fechaFab":"2026-03-25","histFab":["2026-03-09"],"diasDesdeVta":116,"sc":"BETTY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-03-09"},{"id":"3247_7","folio":"3247","cliente":"ACCESGAS  (COMBUSTIBLES)","empresa":"JJ","vendedor":"OTROS","financiado":"CONTADO","equipo":"2","modelo":"PORTA 402020 3 EJES","comentarios":"Pte de Fabrica","fechaVta":"2025-12-05","fechaFab":null,"histFab":["2026-03-31"],"diasDesdeVta":115,"sc":"JULY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-03-31"},{"id":"3736_8","folio":"3736","cliente":"CINTHIA ITZEL TRUJILLO JUAREZ","empresa":"HT","vendedor":"HEBER","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020 NEWAY","comentarios":"Promesa de entrega","fechaVta":"2025-12-05","fechaFab":null,"histFab":[],"diasDesdeVta":115,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3740_9","folio":"3740","cliente":"ELVIRA GONZALEZ  ZEMPOALTECA","empresa":"HT","vendedor":"ANTONIO","financiado":"36 MESES","equipo":"1","modelo":"PLANA 40 PIES 3 EJES ALTA JJ","comentarios":"vendedor","fechaVta":"2025-12-10","fechaFab":null,"histFab":[],"diasDesdeVta":110,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3753_10","folio":"3753","cliente":"CESAR AUGUSTO POLANCO DE LA MORA","empresa":"HT","vendedor":"YULIANA","financiado":"48 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Promesa de entrega","fechaVta":"2025-12-15","fechaFab":"2026-03-30","histFab":[],"diasDesdeVta":105,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3764_11","folio":"3764","cliente":"VIGA TRADE LOGIC","empresa":"HT","vendedor":"NORMA","financiado":"15 MESES","equipo":"1","modelo":"PORTA 40 JJ","comentarios":"Promesa de entrega","fechaVta":"2025-12-18","fechaFab":"2026-04-08","histFab":[],"diasDesdeVta":102,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3764_12","folio":"3764","cliente":"VIGA TRADE LOGIC","empresa":"HT","vendedor":"NORMA","financiado":"15 MESES","equipo":"1","modelo":"PORTA 40 JJ","comentarios":"Promesa de entrega","fechaVta":"2025-12-19","fechaFab":"2026-04-08","histFab":[],"diasDesdeVta":101,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3353_13","folio":"3353","cliente":"COMERCIALIZADORA TR ZONE","empresa":"JJ","vendedor":"OTROS","financiado":"CONTADO","equipo":"2","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2025-12-23","fechaFab":null,"histFab":[],"diasDesdeVta":97,"sc":"JULY","mas60":"SI","estado":"pendiente"},{"id":"3776_14","folio":"3776","cliente":"COMERCIO FORESTAL DEL NORTE","empresa":"HT","vendedor":"MARIO","financiado":"15 MESES","equipo":"2","modelo":"PLANA 48 PIES 3 EJES ALTA JJ","comentarios":"Pte de Fabrica","fechaVta":"2025-12-26","fechaFab":null,"histFab":[],"diasDesdeVta":94,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3768_15","folio":"3768","cliente":"EIGHT EXPRESS","empresa":"3C","vendedor":"MARIO","financiado":"48 MESES","equipo":"1","modelo":"GONDOLA 2 EJES","comentarios":"vendedor","fechaVta":"2025-12-30","fechaFab":null,"histFab":[],"diasDesdeVta":90,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3358_16","folio":"3358","cliente":"GERARDO LEAL RODRIGUEZ","empresa":"JJ","vendedor":"JESUS","financiado":"5 MESES","equipo":"1","modelo":"GONDOLA 3 EJES","comentarios":"Pte de Fabrica","fechaVta":"2025-12-30","fechaFab":null,"histFab":["2026-03-30"],"diasDesdeVta":90,"sc":"BETTY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-03-30"},{"id":"3778_17","folio":"3778","cliente":"KATYA DEL CARMEN ZEPEDA VILLALVAZO","empresa":"3C","vendedor":"NORMA","financiado":"48 MESES","equipo":"1","modelo":"PLANA 40 PIES 2 EJES ALTA JJ","comentarios":"vendedor","fechaVta":"2025-12-31","fechaFab":null,"histFab":[],"diasDesdeVta":89,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3784_18","folio":"3784","cliente":"MAYA LOGISTICA Y ADUANAS","empresa":"3C","vendedor":"MARY","financiado":"10 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Promesa de entrega","fechaVta":"2025-12-31","fechaFab":"2026-04-15","histFab":[],"diasDesdeVta":89,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3783_19","folio":"3783","cliente":"TRAYECTOS ARG DE MEXICO","empresa":"HT","vendedor":"YULIANA","financiado":"48 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"vendedor","fechaVta":"2025-12-31","fechaFab":null,"histFab":[],"diasDesdeVta":89,"sc":"GINA","mas60":"SI","estado":"pendiente"},{"id":"3786_20","folio":"3786","cliente":"DOMINGO MARTINEZ RUMBO","empresa":"HT","vendedor":"YULIANA","financiado":"24 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2025-12-31","fechaFab":null,"histFab":[],"diasDesdeVta":89,"sc":"","mas60":"SI","estado":"pendiente"},{"id":"3787_21","folio":"3787","cliente":"CONSTRUCCIONES VELAZQUEZ Y ASOCIADOS","empresa":"3C","vendedor":"NORMA","financiado":"15 MESES","equipo":"1","modelo":"GONDOLA 2 EJES","comentarios":"Promesa de entrega","fechaVta":"2026-01-05","fechaFab":null,"histFab":[],"diasDesdeVta":84,"sc":"BETTY","mas60":"SI","estado":"pendiente"},{"id":"3363_22","folio":"3363","cliente":"BBVA LEASING MEXICO","empresa":"JJ","vendedor":"HEBER","financiado":"CONTADO","equipo":"2","modelo":"GONDOLA 2 EJES","comentarios":"Promesa de entrega","fechaVta":"2026-01-13","fechaFab":"2026-03-30","histFab":["2026-01-23","2026-01-30"],"diasDesdeVta":76,"sc":"BETTY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-01-23"},{"id":"3363_23","folio":"3363","cliente":"BBVA LEASING MEXICO","empresa":"JJ","vendedor":"HEBER","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2026-01-13","fechaFab":"2026-03-30","histFab":["2026-01-23","2026-01-30"],"diasDesdeVta":76,"sc":"BETTY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-01-23"},{"id":"3825_24","folio":"3825","cliente":"GRUPO TL AVITIA","empresa":"HT","vendedor":"NORMA","financiado":"48 MESES","equipo":"1","modelo":"PLANA 48 PIES 3 EJES ALTA JJ","comentarios":"Promesa de entrega","fechaVta":"2026-01-28","fechaFab":"2026-03-30","histFab":["2026-03-13"],"diasDesdeVta":61,"sc":"BETTY","mas60":"SI","estado":"pendiente","fechaPromesaInicial":"2026-03-13"},{"id":"3835_25","folio":"3835","cliente":"CLAUDIA ANGELICA RIOS SALAZAR","empresa":"3C","vendedor":"SARA","financiado":"10 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Promesa de entrega","fechaVta":"2026-01-30","fechaFab":null,"histFab":["2026-09-11","2026-02-19"],"diasDesdeVta":59,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-09-11"},{"id":"3838_26","folio":"3838","cliente":"VIGA TRADE LOGIC","empresa":"3C","vendedor":"SARA","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020","comentarios":"Promesa de entrega","fechaVta":"2026-01-30","fechaFab":"2026-04-08","histFab":["2026-02-20"],"diasDesdeVta":59,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-02-20"},{"id":"3838_27","folio":"3838","cliente":"VIGA TRADE LOGIC","empresa":"3C","vendedor":"SARA","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2026-01-30","fechaFab":"2026-04-08","histFab":["2026-02-20"],"diasDesdeVta":59,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-02-20"},{"id":"3839_28","folio":"3839","cliente":"SILVESTRE PICHARDO DELGADO","empresa":"HT","vendedor":"MARY","financiado":"36 MESES","equipo":"1","modelo":"PORTA EXT JJ","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-01-30","fechaFab":null,"histFab":[],"diasDesdeVta":59,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3840_29","folio":"3840","cliente":"MAXIMO GARDUÑO HERNANDEZ","empresa":"HT","vendedor":"MARY","financiado":"36 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Flete","fechaVta":"2026-01-30","fechaFab":null,"histFab":["2026-03-31"],"diasDesdeVta":59,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-31"},{"id":"3847_30","folio":"3847","cliente":"ALVAREZ FLETES NACIONALES","empresa":"HT","vendedor":"SARA","financiado":"24 MESES","equipo":"2","modelo":"PORTA 4020","comentarios":"vendedor","fechaVta":"2026-01-31","fechaFab":null,"histFab":[],"diasDesdeVta":58,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3847_31","folio":"3847","cliente":"ALVAREZ FLETES NACIONALES","empresa":"HT","vendedor":"SARA","financiado":"24 MESES","equipo":"1","modelo":"DOLLY","comentarios":"vendedor","fechaVta":"2026-01-31","fechaFab":null,"histFab":[],"diasDesdeVta":58,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3852_32","folio":"3852","cliente":"LUIS ENRIQUE VALENCIA ANDRADE","empresa":"HT","vendedor":"YULIANA","financiado":"48 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Pte contrato  (cliente)","fechaVta":"2026-01-31","fechaFab":null,"histFab":[],"diasDesdeVta":58,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3853_33","folio":"3853","cliente":"PARAMO LOGISTIC","empresa":"3C","vendedor":"YULIANA","financiado":"48 MESES","equipo":"1","modelo":"CAJA 53''","comentarios":"Pte de Fabrica","fechaVta":"2026-01-31","fechaFab":null,"histFab":["2026-04-10"],"diasDesdeVta":58,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-04-10"},{"id":"3854_34","folio":"3854","cliente":"YOLANDA ALVAREZ CHAVEZ","empresa":"3C","vendedor":"MARY","financiado":"24 MESES","equipo":"1","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"vendedor","fechaVta":"2026-01-31","fechaFab":null,"histFab":[],"diasDesdeVta":58,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3859_35","folio":"3859","cliente":"ASAEL LOPEZ CALLEJAS","empresa":"3C","vendedor":"MARIO","financiado":"48 MESES","equipo":"2","modelo":"GONDOLA 2 EJES","comentarios":"Pte contrato  (cliente)","fechaVta":"2026-02-05","fechaFab":null,"histFab":[],"diasDesdeVta":53,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3859_36","folio":"3859","cliente":"ASAEL LOPEZ CALLEJAS","empresa":"3C","vendedor":"MARIO","financiado":"48 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Pte contrato  (cliente)","fechaVta":"2026-02-05","fechaFab":null,"histFab":[],"diasDesdeVta":53,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3858_37","folio":"3858","cliente":"KARLA PAMELA SANCHEZ FALCON","empresa":"3C","vendedor":"PACO","financiado":"CONTADO","equipo":"1","modelo":"PLANA 40 PIES 3 EJES ALTA JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-02-05","fechaFab":null,"histFab":["2026-03-04"],"diasDesdeVta":53,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-04"},{"id":"3866_38","folio":"3866","cliente":"ANDREA VALDOVINOS GARCIA","empresa":"3C","vendedor":"SARA","financiado":"5 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Pte contrato  (arrendamiento)","fechaVta":"2026-02-06","fechaFab":null,"histFab":[],"diasDesdeVta":52,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"1777_39","folio":"1777","cliente":"CONSTRUCTORA INEDSA BR","empresa":"JJ","vendedor":"MARIO","financiado":"FINANCIADO","equipo":"1","modelo":"CAMA BAJA 2 EJES","comentarios":"","fechaVta":"2026-02-07","fechaFab":null,"histFab":[],"diasDesdeVta":51,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3861_40","folio":"3861","cliente":"HUERTA LOS TRES SEÑORES","empresa":"3C","vendedor":"NORMA","financiado":"10 MESES","equipo":"1","modelo":"GONDOLA 3 EJES","comentarios":"Pte de Fabrica","fechaVta":"2026-02-09","fechaFab":null,"histFab":["2026-03-05"],"diasDesdeVta":49,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-05"},{"id":"3513_41","folio":"3513","cliente":"ABRAHAM ROGELIO GONZALEZ OROZCO","empresa":"JJ","vendedor":"SARA","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020 NEWAY","comentarios":"vendedor","fechaVta":"2026-02-13","fechaFab":null,"histFab":[],"diasDesdeVta":45,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3890_42","folio":"3890","cliente":"JOEL GUILLERMO OLGUIN TIRADO","empresa":"3C","vendedor":"NORMA","financiado":"15 MESES","equipo":"1","modelo":"GONDOLA 3 EJES","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-02-17","fechaFab":null,"histFab":[],"diasDesdeVta":41,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3898_43","folio":"3898","cliente":"ACAPULCO SHIPPING AGENCIES SA DE CV","empresa":"HT","vendedor":"NORMA","financiado":"48 MESES","equipo":"1","modelo":"PLANA 40 PIES 3 EJES HQ JJ","comentarios":"Flete","fechaVta":"2026-02-20","fechaFab":null,"histFab":[],"diasDesdeVta":38,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3898_44","folio":"3898","cliente":"ACAPULCO SHIPPING AGENCIES SA DE CV","empresa":"HT","vendedor":"NORMA","financiado":"48 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Flete","fechaVta":"2026-02-20","fechaFab":null,"histFab":[],"diasDesdeVta":38,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3539_45","folio":"3539","cliente":"CARLOS MEDINA BAUTISTA","empresa":"JJ","vendedor":"YULIANA","financiado":"CONTADO","equipo":"1","modelo":"PLANA 40 PIES 3 EJES HQ JJ","comentarios":"Promesa de entrega","fechaVta":"2026-02-23","fechaFab":"2026-03-26","histFab":["2026-03-09"],"diasDesdeVta":35,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-09"},{"id":"3909_46","folio":"3909","cliente":"JUAN CARLOS CONTRERAS MORALES","empresa":"HT","vendedor":"NORMA","financiado":"48 MESES","equipo":"1","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-02-24","fechaFab":null,"histFab":["2025-03-11"],"diasDesdeVta":34,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2025-03-11"},{"id":"3549_47","folio":"3549","cliente":"SANDRA ALONDRA GUERRERO FRAILE","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020 NEWAY","comentarios":"Promesa de entrega","fechaVta":"2026-02-26","fechaFab":"2026-04-10","histFab":[],"diasDesdeVta":32,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3550_48","folio":"3550","cliente":"DESARROLLO Y FABRICACION DE ACERO","empresa":"JJ","vendedor":"MARIO","financiado":"CONTADO","equipo":"1","modelo":"FOODTRUCK","comentarios":"Pte de Fabrica","fechaVta":"2026-02-26","fechaFab":null,"histFab":["2026-03-26"],"diasDesdeVta":32,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-26"},{"id":"3552_49","folio":"3552","cliente":"TRANSPORTES CALI DEL PACIFICO","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"PORTA 402020","comentarios":"Flete","fechaVta":"2026-02-27","fechaFab":null,"histFab":[],"diasDesdeVta":31,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3552_50","folio":"3552","cliente":"TRANSPORTES CALI DEL PACIFICO","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"DOLLY","comentarios":"Flete","fechaVta":"2026-02-27","fechaFab":null,"histFab":[],"diasDesdeVta":31,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3917_51","folio":"3917","cliente":"EXPRESO ATLANTICO DE CARGA, SA DE CV","empresa":"HT","vendedor":"GERARDO","financiado":"36 MESES","equipo":"2","modelo":"PORTA 40 JJ","comentarios":"Pte contrato  (cliente)","fechaVta":"2026-02-27","fechaFab":null,"histFab":[],"diasDesdeVta":31,"sc":"JULY","mas60":"NO","estado":"pendiente"},{"id":"3919_52","folio":"3919","cliente":"ALMACENAMIENTO, DISTRIBUCION Y SERVICIOS DE AUTOTRA SA","empresa":"HT","vendedor":"SARA","financiado":"24 MESES","equipo":"1","modelo":"PLANA 40 PIES 3 EJES HQ JJ","comentarios":"Flete","fechaVta":"2026-02-27","fechaFab":null,"histFab":[],"diasDesdeVta":31,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3920_53","folio":"3920","cliente":"N360 SA de CV","empresa":"3C","vendedor":"MARY","financiado":"10 MESES","equipo":"4","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Flete","fechaVta":"2026-02-27","fechaFab":null,"histFab":["2025-03-13"],"diasDesdeVta":31,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2025-03-13"},{"id":"3920_54","folio":"3920","cliente":"N360 SA de CV","empresa":"3C","vendedor":"MARY","financiado":"10 MESES","equipo":"2","modelo":"DOLLY","comentarios":"Flete","fechaVta":"2026-02-27","fechaFab":null,"histFab":["2025-03-13"],"diasDesdeVta":31,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2025-03-13"},{"id":"3554_55","folio":"3554","cliente":"TRIADA LOGISTICS","empresa":"JJ","vendedor":"HEBER","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020","comentarios":"Pte de Fabrica","fechaVta":"2026-02-27","fechaFab":null,"histFab":["2026-03-12"],"diasDesdeVta":31,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-12"},{"id":"3554_56","folio":"3554","cliente":"TRIADA LOGISTICS","empresa":"JJ","vendedor":"HEBER","financiado":"CONTADO","equipo":"1","modelo":"PORTA 40 JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-02-27","fechaFab":null,"histFab":["2026-03-12"],"diasDesdeVta":31,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-12"},{"id":"3554_57","folio":"3554","cliente":"TRIADA LOGISTICS","empresa":"JJ","vendedor":"HEBER","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Pte de Fabrica","fechaVta":"2026-02-27","fechaFab":null,"histFab":["2026-03-12"],"diasDesdeVta":31,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-12"},{"id":"3557_58","folio":"3557","cliente":"ELEMENT FLEET MANAGEMENT CORPORATION MEXICO","empresa":"JJ","vendedor":"JESUS","financiado":"CONTADO","equipo":"5","modelo":"PLANA 40 PIES 3 EJES ALTA JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-02-27","fechaFab":null,"histFab":["2025-04-08"],"diasDesdeVta":31,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2025-04-08"},{"id":"3560_59","folio":"3560","cliente":"ZAIRA DOLORES VALENCIA MAGAÑA","empresa":"JJ","vendedor":"YULIANA","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2026-02-28","fechaFab":"2026-04-30","histFab":[],"diasDesdeVta":30,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3925_60","folio":"3925","cliente":"YOZETH SALVADOR GONZALEZ","empresa":"HT","vendedor":"MARY","financiado":"48 MESES","equipo":"2","modelo":"PLANA 40 PIES 2 EJES ALTA JJ","comentarios":"Promesa de entrega","fechaVta":"2026-03-02","fechaFab":"2026-03-30","histFab":["2026-03-12"],"diasDesdeVta":28,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-12"},{"id":"3925_61","folio":"3925","cliente":"YOZETH SALVADOR GONZALEZ","empresa":"HT","vendedor":"MARY","financiado":"5 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2026-03-02","fechaFab":"2026-03-30","histFab":["2026-03-10"],"diasDesdeVta":28,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-10"},{"id":"3929_62","folio":"3929","cliente":"TRANSPORTES CALI DEL PACIFICO","empresa":"3C","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"PORTA 402020","comentarios":"Flete","fechaVta":"2026-03-03","fechaFab":"2026-03-10","histFab":[],"diasDesdeVta":27,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3571_63","folio":"3571","cliente":"PRISCILIANA NOEMI RUIZ LUNA","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"PORTA 4020 NEWAY","comentarios":"Flete","fechaVta":"2026-03-03","fechaFab":null,"histFab":[],"diasDesdeVta":27,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3571_64","folio":"3571","cliente":"PRISCILIANA NOEMI RUIZ LUNA","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Flete","fechaVta":"2026-03-03","fechaFab":null,"histFab":[],"diasDesdeVta":27,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3932_65","folio":"3932","cliente":"CLEMENTY URIEL","empresa":"HT","vendedor":"YULIANA","financiado":"36 MESES","equipo":"3","modelo":"PORTA 4020","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-04","fechaFab":null,"histFab":[],"diasDesdeVta":26,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3932_66","folio":"3932","cliente":"CLEMENTY URIEL","empresa":"HT","vendedor":"YULIANA","financiado":"36 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-04","fechaFab":null,"histFab":[],"diasDesdeVta":26,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3896_67","folio":"3896","cliente":"CAROLINA HURTADO SALGADO","empresa":"3C","vendedor":"MARIO","financiado":"36 MESES","equipo":"1","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Promesa de entrega","fechaVta":"2026-03-05","fechaFab":"2026-04-15","histFab":[],"diasDesdeVta":25,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3580_68","folio":"3580","cliente":"CANDELARIO GALVAN HUERTA","empresa":"JJ","vendedor":"GERARDO","financiado":"CONTADO","equipo":"1","modelo":"CONTADO","comentarios":"Promesa de entrega","fechaVta":"2026-03-06","fechaFab":null,"histFab":[],"diasDesdeVta":24,"sc":"JULY","mas60":"NO","estado":"pendiente"},{"id":"3579_69","folio":"3579","cliente":"NORTHSTAR EXPRESS","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-03-06","fechaFab":null,"histFab":["2026-03-20","2026-04-02"],"diasDesdeVta":24,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-20"},{"id":"3938_70","folio":"3938","cliente":"ANTONIO FERNANDEZ RODRIGUEZ","empresa":"HT","vendedor":"GERARDO","financiado":"15 MESES","equipo":"1","modelo":"PORTA 20 JJ","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-09","fechaFab":null,"histFab":[],"diasDesdeVta":21,"sc":"JULY","mas60":"NO","estado":"pendiente"},{"id":"3939_71","folio":"3939","cliente":"MONSERRAT VIRIDIANA PINEDA BALANZAR","empresa":"HT","vendedor":"MARY","financiado":"48 MESES","equipo":"1","modelo":"PORTA 40 JJ","comentarios":"Flete","fechaVta":"2026-03-10","fechaFab":null,"histFab":[],"diasDesdeVta":20,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3593_72","folio":"3593","cliente":"ENCALLA","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2026-03-10","fechaFab":null,"histFab":[],"diasDesdeVta":20,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3594_73","folio":"3594","cliente":"RODOLFO SANTOS ROMERO","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Promesa de entrega","fechaVta":"2026-03-10","fechaFab":null,"histFab":[],"diasDesdeVta":20,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3942_74","folio":"3942","cliente":"3R EDIFICACIONES & PROYECTOS","empresa":"HT","vendedor":"NORMA","financiado":"48 MESES","equipo":"1","modelo":"PLANA 40 PIES 2 EJES ALTA JJ","comentarios":"Pte contrato  (cliente)","fechaVta":"2026-03-10","fechaFab":null,"histFab":[],"diasDesdeVta":20,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3944_75","folio":"3944","cliente":"TRANSPORTES AMPERSAND","empresa":"HT","vendedor":"MARIO","financiado":"48 MESES","equipo":"1","modelo":"PORTA 40 JJ","comentarios":"vendedor","fechaVta":"2026-03-11","fechaFab":null,"histFab":[],"diasDesdeVta":19,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3946_76","folio":"3946","cliente":"SOLUCIONES MARITIMAS Y TERRESTRES 4PL SA DE CV","empresa":"HT","vendedor":"MARY","financiado":"15 MESES","equipo":"1","modelo":"CAJA 53''","comentarios":"Pte de Fabrica","fechaVta":"2026-03-11","fechaFab":null,"histFab":["2026-03-28"],"diasDesdeVta":19,"sc":"GINA","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-03-28"},{"id":"3947_77","folio":"3947","cliente":"TRANSPORTACIONES E INDUSTRIAL CERECERO","empresa":"HT","vendedor":"MARIO","financiado":"24 MESES","equipo":"1","modelo":"PLANA 40 PIES 3 EJES ALTA JJ","comentarios":"Promesa de entrega","fechaVta":"2026-03-12","fechaFab":null,"histFab":[],"diasDesdeVta":18,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3948_78","folio":"3948","cliente":"ANDREA GOMEZ JIMENEZ","empresa":"HT","vendedor":"GERARDO","financiado":"36 MESES","equipo":"1","modelo":"GONDOLA 2 EJES","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-12","fechaFab":null,"histFab":[],"diasDesdeVta":18,"sc":"JULY","mas60":"NO","estado":"pendiente"},{"id":"3950_79","folio":"3950","cliente":"LUCIA GONZALEZ MUÑOZ","empresa":"HT","vendedor":"GERARDO","financiado":"48 MESES","equipo":"1","modelo":"PORTA EXT JJ","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-13","fechaFab":null,"histFab":[],"diasDesdeVta":17,"sc":"JULY","mas60":"NO","estado":"pendiente"},{"id":"3598_80","folio":"3598","cliente":"LOGISTICS GELIS","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"PORTA 4020 NEWAY","comentarios":"Flete","fechaVta":"2026-03-13","fechaFab":null,"histFab":[],"diasDesdeVta":17,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3957_81","folio":"3957","cliente":"JOSE TELLO GONZALEZ","empresa":"HT","vendedor":"MARY","financiado":"10 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-13","fechaFab":null,"histFab":[],"diasDesdeVta":17,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3954_82","folio":"3954","cliente":"HILARIO VAZQUEZ FLORES","empresa":"3C","vendedor":"JESUS","financiado":"10 MESES","equipo":"1","modelo":"CAJA 53''","comentarios":"Pte de Fabrica","fechaVta":"2026-03-13","fechaFab":null,"histFab":["2026-04-13"],"diasDesdeVta":17,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-04-13"},{"id":"3955_83","folio":"3955","cliente":"HILARIO VAZQUEZ FLORES","empresa":"3C","vendedor":"JESUS","financiado":"10 MESES","equipo":"1","modelo":"CAJA 53''","comentarios":"Pte de Fabrica","fechaVta":"2026-03-13","fechaFab":null,"histFab":["2026-04-13"],"diasDesdeVta":17,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-04-13"},{"id":"3956_84","folio":"3956","cliente":"HILARIO VAZQUEZ FLORES","empresa":"3C","vendedor":"JESUS","financiado":"10 MESES","equipo":"1","modelo":"CAJA 53''","comentarios":"Pte de Fabrica","fechaVta":"2026-03-13","fechaFab":null,"histFab":["2026-04-13"],"diasDesdeVta":17,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-04-13"},{"id":"3950_85","folio":"3950","cliente":"LUCIA GONZALEZ MUÑOZ","empresa":"HT","vendedor":"GERARDO","financiado":"48 MESES","equipo":"1","modelo":"DOLLY","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-13","fechaFab":null,"histFab":[],"diasDesdeVta":17,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3960_86","folio":"3960","cliente":"YOLANDA URCINO VAZQUEZ","empresa":"3C","vendedor":"MARY","financiado":"CONTADO","equipo":"2","modelo":"PORTA 4020 NEWAY","comentarios":"Promesa de entrega","fechaVta":"2026-03-17","fechaFab":"2026-03-30","histFab":[],"diasDesdeVta":13,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3599_87","folio":"3599","cliente":"EH TRANSPORTES DE MANZANILLO","empresa":"JJ","vendedor":"MARY","financiado":"CONTADO","equipo":"1","modelo":"PORTA 4020 NEWAY","comentarios":"Flete","fechaVta":"2026-03-18","fechaFab":null,"histFab":[],"diasDesdeVta":12,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3611_88","folio":"3611","cliente":"AUSTINMX TRANSPORT","empresa":"JJ","vendedor":"JESUS","financiado":"CONTADO","equipo":"1","modelo":"GONDOLA 3 EJES","comentarios":"Pte de Fabrica","fechaVta":"2026-03-20","fechaFab":null,"histFab":[],"diasDesdeVta":10,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3962_89","folio":"3962","cliente":"VICTORIA PEREZ","empresa":"HT","vendedor":"ENRIQUE","financiado":"48 MESES","equipo":"1","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Pte documentos  (clientes)","fechaVta":"2026-03-20","fechaFab":null,"histFab":[],"diasDesdeVta":10,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3965_90","folio":"3965","cliente":"FRETTA CARRIERS SA DE CV","empresa":"3C","vendedor":"JESUS","financiado":"10 MESES","equipo":"1","modelo":"GONDOLA 3 EJES","comentarios":"Promesa de entrega","fechaVta":"2026-03-20","fechaFab":"2026-03-27","histFab":[],"diasDesdeVta":10,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3966_91","folio":"3966","cliente":"NORTHSTAR EXPRESS","empresa":"3C","vendedor":"MARY","financiado":"10 MESES","equipo":"4","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-03-20","fechaFab":null,"histFab":[],"diasDesdeVta":10,"sc":"GINA","mas60":"NO","estado":"pendiente"},{"id":"3968_92","folio":"3968","cliente":"FRANCISCO ALEJANDRO CARO VICTORINO","empresa":"HT","vendedor":"JESUS","financiado":"48 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"vendedor","fechaVta":"2026-03-24","fechaFab":null,"histFab":[],"diasDesdeVta":6,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3632_93","folio":"3632","cliente":"SPEED.AGM.","empresa":"JJ","vendedor":"NORMA","financiado":"CONTADO","equipo":"2","modelo":"PLANA 40 PIES 2 EJES HQ JJ","comentarios":"Pte de Fabrica","fechaVta":"2026-03-24","fechaFab":null,"histFab":["2026-04-08"],"diasDesdeVta":6,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-04-08"},{"id":"3632_94","folio":"3632","cliente":"SPEED.AGM.","empresa":"JJ","vendedor":"NORMA","financiado":"CONTADO","equipo":"1","modelo":"DOLLY","comentarios":"Pte de Fabrica","fechaVta":"2026-03-24","fechaFab":null,"histFab":["2026-04-08"],"diasDesdeVta":6,"sc":"BETTY","mas60":"NO","estado":"pendiente","fechaPromesaInicial":"2026-04-08"},{"id":"3970_95","folio":"3970","cliente":"FRANCISCO JAVIER CAMPOS NAVARRO","empresa":"HT","vendedor":"NORMA","financiado":"36 MESES","equipo":"1","modelo":"PORTA 4020","comentarios":"Pte de Fabrica","fechaVta":"2026-03-24","fechaFab":null,"histFab":[],"diasDesdeVta":6,"sc":"BETTY","mas60":"NO","estado":"pendiente"},{"id":"3952_96","folio":"3952","cliente":"GRUPO IMPULSOR PAJEME","empresa":"3C","vendedor":"HEBER","financiado":"5 MESES","equipo":"6","modelo":"PORTA 4020 NEWAY","comentarios":"Pte de Fabrica","fechaVta":"2026-03-24","fechaFab":null,"histFab":[],"diasDesdeVta":6,"sc":"GINA","mas60":"NO","estado":"pendiente"}];
 
@@ -439,12 +504,14 @@ function renderDash() {
   const sinFecha = orders.filter(o => !o.fechaFab).length;
   const conCambios = orders.filter(o => getDateInfo(o).totalCambios > 0).length;
   const totalCambios = orders.reduce((s, o) => s + getDateInfo(o).totalCambios, 0);
+  const conCita = orders.filter(o => o.fechaCita).length;
 
   document.getElementById('metrics-row').innerHTML = `
     <div class="metric-card"><div class="metric-val blue">${total}</div><div class="metric-lbl">Órdenes totales</div></div>
     <div class="metric-card"><div class="metric-val red">${sinFecha}</div><div class="metric-lbl">Sin fecha fábrica</div></div>
     <div class="metric-card"><div class="metric-val amber">${conCambios}</div><div class="metric-lbl">Con cambios de fecha</div></div>
     <div class="metric-card"><div class="metric-val red">${totalCambios}</div><div class="metric-lbl">Total cambios fábrica</div></div>
+    <div class="metric-card"><div class="metric-val green">${conCita}</div><div class="metric-lbl">Con fecha de entrega agendada</div></div>
   `;
 
   // Sin fecha
@@ -495,6 +562,33 @@ function renderDash() {
     scMap[k].totalCambios += info.totalCambios;
   });
   const maxTotal = Math.max(...Object.values(scMap).map(v => v.total));
+  // ── Citas agendadas ──
+  const citas = orders
+    .filter(o => o.fechaCita)
+    .sort((a, b) => new Date(a.fechaCita) - new Date(b.fechaCita));
+  const citaMiniCount = document.getElementById('dash-cita-mini-count');
+  if (citaMiniCount) citaMiniCount.textContent = citas.length + ' orden' + (citas.length !== 1 ? 'es' : '');
+  const citaMini = document.getElementById('dash-citas-mini');
+  if (citaMini) {
+    citaMini.innerHTML = citas.length ? citas.slice(0, 8).map(o => {
+      const diasC = daysTo(o.fechaCita);
+      const diasFab = o.fechaFab ? daysTo(o.fechaFab) : null;
+      const alerta = diasFab !== null && diasFab > diasC;
+      const diasColor = diasC < 0 ? 'var(--red)' : diasC <= 5 ? 'var(--amber)' : 'var(--green)';
+      return `<div class="list-item" style="padding:10px 18px">
+        <div>
+          <div class="list-name">${truncate(o.cliente, 30)}</div>
+          <div class="list-sub">${o.folio} · ${o.modelo}${alerta ? ' · <span style=\'color:var(--red)\'>⚠ Fábrica posterior a cita</span>' : ''}</div>
+        </div>
+        <div class="list-right">
+          <div class="mono" style="font-size:13px;font-weight:600;color:${diasColor}">${fmt(o.fechaCita)}</div>
+          <div class="list-sub">${diasC !== null ? (diasC < 0 ? 'vencida' : diasC === 0 ? 'hoy' : '+' + diasC + 'd') : ''}</div>
+        </div>
+      </div>`;
+    }).join('') + (citas.length > 8 ? `<div style="padding:10px 18px;font-size:12px;color:var(--text3)">…y ${citas.length - 8} más</div>` : '')
+    : '<div class="empty">Ninguna orden tiene cita agendada aún</div>';
+  }
+
   document.getElementById('dash-sc').innerHTML = Object.entries(scMap)
     .sort((a, b) => b[1].total - a[1].total)
     .map(([k, v]) => `
@@ -519,6 +613,17 @@ function populateFilters() {
   femp.innerHTML = '<option value="">Todas empresas</option>' + empVals.map(v => `<option ${v===cur2?'selected':''}>${v}</option>`).join('');
 }
 
+let folioSortDir = null; // null | 'asc' | 'desc'
+
+function toggleFolioSort() {
+  folioSortDir = folioSortDir === 'asc' ? 'desc' : folioSortDir === 'desc' ? null : 'asc';
+  const th = document.getElementById('th-folio');
+  th.classList.remove('sort-asc','sort-desc');
+  if (folioSortDir === 'asc') th.classList.add('sort-asc');
+  if (folioSortDir === 'desc') th.classList.add('sort-desc');
+  renderOrders();
+}
+
 function renderOrders() {
   const q = (document.getElementById('fq').value || '').toLowerCase();
   const fsc = document.getElementById('f-sc').value;
@@ -538,8 +643,14 @@ function renderOrders() {
     return true;
   });
 
+  if (folioSortDir) {
+    list = list.slice().sort((a, b) => {
+      const fa = parseInt(a.folio) || 0, fb = parseInt(b.folio) || 0;
+      return folioSortDir === 'asc' ? fa - fb : fb - fa;
+    });
+  }
   const tb = document.getElementById('orders-tbody');
-  if (!list.length) { tb.innerHTML = `<tr><td colspan="14"><div class="empty">Sin resultados</div></td></tr>`; return; }
+  if (!list.length) { tb.innerHTML = `<tr><td colspan="15"><div class="empty">Sin resultados</div></td></tr>`; return; }
 
   tb.innerHTML = list.map(o => {
     const info = getDateInfo(o);
@@ -555,8 +666,14 @@ function renderOrders() {
       <td class="mono" style="text-align:center">${o.equipo}</td>
       <td class="mono" style="font-size:12px;color:var(--text2)">${fmt(info.promesaInicial)}</td>
       <td class="mono ${dateClass}">${o.fechaFab ? fmt(o.fechaFab) : '<span class="badge badge-red">Pendiente</span>'}</td>
+      <td onclick="event.stopPropagation()" style="min-width:120px">
+        ${o.fechaCita
+          ? `<span class="mono" style="font-size:12px">${fmt(o.fechaCita)}</span>`
+          : `<input type="date" class="cita-input" value="" onchange="updateCita('${o.id}',this.value)" onclick="event.stopPropagation()" title="Agendar cita">`
+        }
+      </td>
       <td><span class="chg-counter ${chgClass(info.totalCambios)}">${info.totalCambios}</span></td>
-      <td style="color:var(--text2);font-size:12px" class="truncate">${o.comentarios}</td>
+      <td onclick="event.stopPropagation()" style="min-width:130px"><select class="estatus-select" onchange="updateEstatus('${o.id}',this.value)" onclick="event.stopPropagation()">${estatusOptions(o.comentarios)}</select></td>
       <td>${o.sc}</td>
       <td class="mono" style="text-align:right;color:var(--text2)">${o.diasDesdeVta}</td>
       <td><button class="btn btn-sm" onclick="event.stopPropagation();openModal('${o.id}')">Ver</button></td>
@@ -642,7 +759,21 @@ function openModal(id) {
       <div class="info-cell"><div class="info-lbl">Días desde venta</div><div class="info-val mono">${o.diasDesdeVta}</div></div>
       <div class="info-cell"><div class="info-lbl">Total cambios</div><div class="info-val"><span class="chg-counter ${chgClass(info.totalCambios)}">${info.totalCambios}</span></div></div>
     </div>
-    ${o.comentarios ? `<div class="alert alert-warn" style="margin-bottom:14px"><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px">Comentarios:</span> ${o.comentarios}</div>` : ''}
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Cita con cliente</div>
+      ${o.fechaCita
+        ? `<div style="display:flex;align-items:center;gap:12px">
+             <span class="mono" style="font-size:15px;font-weight:600">${fmt(o.fechaCita)}</span>
+             <input type="date" class="form-input" style="width:160px;font-size:12px;padding:5px 8px" value="${o.fechaCita}" onchange="updateCita('${o.id}',this.value);this.closest('.modal-body').querySelector('.cita-display').textContent=fmt(this.value)">
+             <button class="btn btn-sm btn-danger" onclick="updateCita('${o.id}',null);openModal('${o.id}')">Quitar</button>
+           </div>`
+        : `<div style="display:flex;align-items:center;gap:10px">
+             <input type="date" class="form-input" style="width:160px;font-size:12px;padding:5px 8px" id="modal-cita-${o.id}" placeholder="Agendar fecha">
+             <button class="btn btn-sm btn-primary" onclick="saveCitaFromModal('${o.id}')">Agendar</button>
+           </div>`
+      }
+    </div>
+    ${o.comentarios ? `<div class="alert alert-warn" style="margin-bottom:14px"><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px">Estatus:</span> ${o.comentarios}</div>` : ''}
 
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Historial de fechas · fábrica</div>
     ${timelineHTML}
@@ -702,6 +833,18 @@ function registerChange(oid) {
   setTimeout(() => openModal(oid), 300);
 }
 
+function updateCita(oid, value) {
+  const o = orders.find(x => x.id === oid);
+  if (o) { o.fechaCita = value || null; save(); renderDash(); }
+}
+
+function saveCitaFromModal(oid) {
+  const inp = document.getElementById('modal-cita-' + oid);
+  if (!inp || !inp.value) { alert('Selecciona una fecha'); return; }
+  updateCita(oid, inp.value);
+  openModal(oid);
+}
+
 function deleteOrder(oid) {
   if (!confirm('¿Eliminar esta orden del sistema?')) return;
   orders = orders.filter(x => x.id !== oid);
@@ -728,11 +871,11 @@ function addOrder() {
     equipo: document.getElementById('n-cantidad').value || '1',
     financiado: document.getElementById('n-financiado').value.trim(),
     comentarios: document.getElementById('n-comentarios').value,
-    fechaVta: today(), fechaFab, histFab: [], diasDesdeVta: 0, mas60: 'NO', estado: 'pendiente',
+    fechaVta: document.getElementById('n-fechavta').value || today(), fechaFab, fechaCita: document.getElementById('n-fechacita').value || null, histFab: [], diasDesdeVta: 0, mas60: 'NO', estado: 'pendiente',
     fechaPromesaInicial: fechaFab
   });
   save();
-  ['n-folio','n-cliente','n-modelo','n-vendedor','n-sc','n-fechafab','n-financiado','n-comentarios'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['n-folio','n-cliente','n-modelo','n-vendedor','n-sc','n-fechavta','n-fechafab','n-fechacita','n-financiado','n-comentarios'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   document.getElementById('n-cantidad').value = '1';
   const msg = document.getElementById('new-msg');
   msg.style.display = 'flex'; setTimeout(() => msg.style.display = 'none', 3000);
@@ -741,8 +884,8 @@ function addOrder() {
 // ─── CSV EXPORT ───────────────────────────────────────────────
 function exportCSV() {
   const headers = ['Folio','Cliente','Empresa','Vendedor','Modelo','Esquema','Cantidad',
-    'Fecha Venta','Fecha Promesa Inicial','Primera Fecha Fábrica','Fecha Fábrica Actual',
-    '# Cambios Fábrica','Comentarios','SC','Días desde Venta'];
+    'Fecha Venta','Fecha Promesa Inicial','Primera Fecha Fábrica','Fecha Fábrica Actual','Cita Cliente',
+    '# Cambios Fábrica','Estatus','SC','Días desde Venta'];
   const rows = [headers];
   orders.forEach(o => {
     const info = getDateInfo(o);
@@ -753,6 +896,7 @@ function exportCSV() {
       info.promesaInicial || '',
       primera || '',
       o.fechaFab || '',
+      o.fechaCita || '',
       info.totalCambios,
       o.comentarios || '', o.sc, o.diasDesdeVta
     ]);
